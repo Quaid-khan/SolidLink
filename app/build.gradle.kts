@@ -48,6 +48,7 @@ android {
 dependencies {
     implementation(project(":core:domain"))
     implementation(project(":core:common"))
+    implementation(project(":platform:transfer-service"))
 
     val composeBom = platform("androidx.compose:compose-bom:2026.08.00")
     implementation(composeBom)
