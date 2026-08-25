@@ -1,6 +1,8 @@
 package com.solidlink.transport.api
 
 import java.io.Closeable
+import java.io.InputStream
+import java.io.OutputStream
 
 public enum class TransportKind {
     LAN_NSD,
@@ -67,6 +69,11 @@ public interface TransportConnection : Closeable {
     public fun receive(timeoutMillis: Long): TransportResult<ByteArray>
 
     public fun isOpen(): Boolean
+}
+
+public interface StreamTransportConnection : TransportConnection {
+    public val input: InputStream
+    public val output: OutputStream
 }
 
 public interface TransportAdapter {
