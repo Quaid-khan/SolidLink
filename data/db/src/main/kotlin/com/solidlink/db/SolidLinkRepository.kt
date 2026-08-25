@@ -44,6 +44,13 @@ class SolidLinkRepository(
         database.transferBatchDao().findById(batchId)?.toDomain()
     }
 
+    fun getAllBatches(): kotlinx.coroutines.flow.Flow<List<TransferBatch>> =
+        database.transferBatchDao().getAll().let { flow ->
+            kotlinx.coroutines.flow.flow {
+                flow.collect { list -> emit(list.map { it.toDomain() }) }
+            }
+        }
+
     suspend fun saveObject(objectModel: TransferObject): TransitionResult<Unit> = safe("save_object") {
         database.transferObjectDao().upsert(objectModel.toEntity())
     }

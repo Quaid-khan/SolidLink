@@ -34,6 +34,9 @@ interface TransferBatchDao {
 
     @Query("SELECT * FROM transfer_batches WHERE batchId = :batchId")
     suspend fun findById(batchId: String): TransferBatchEntity?
+
+    @Query("SELECT * FROM transfer_batches ORDER BY createdAtEpochMs DESC")
+    fun getAll(): kotlinx.coroutines.flow.Flow<List<TransferBatchEntity>>
 }
 
 @Dao

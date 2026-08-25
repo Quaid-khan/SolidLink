@@ -276,19 +276,19 @@ public fun HomeScreen(
                 ) {
                     ToggleRow(
                         title = "Require peer approval",
-                        checked = true,
-                        onCheckedChange = {},
+                        checked = state.requirePeerApproval,
+                        onCheckedChange = solidLinkViewModel::setRequirePeerApproval,
                     )
                     ToggleRow(
                         title = "Allow advanced SAS confirmation",
-                        checked = true,
-                        onCheckedChange = {},
+                        checked = state.allowSasConfirmation,
+                        onCheckedChange = solidLinkViewModel::setAllowSasConfirmation,
                     )
                     ToggleRow(
                         title = "Local-only routing",
-                        checked = true,
-                        enabled = false,
-                        onCheckedChange = {},
+                        checked = state.localOnlyRouting,
+                        enabled = true,
+                        onCheckedChange = solidLinkViewModel::setLocalOnlyRouting,
                     )
                 }
             }
@@ -323,7 +323,18 @@ public fun HomeScreen(
                     title = "Transfer history",
                     icon = Icons.Outlined.History,
                 ) {
-                    Text("Nothing transferred yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val history by solidLinkViewModel.transferHistory.collectAsStateWithLifecycle(initialValue = emptyList())
+                    if (history.isEmpty()) {
+                        Text("Nothing transferred yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        history.take(5).forEach { batch ->
+                            Text(
+                                "Batch ${batch.batchId.take(8)} - ${batch.objectCount} files",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = SolidLinkNavy
+                            )
+                        }
+                    }
                 }
             }
 
