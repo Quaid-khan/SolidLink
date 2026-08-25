@@ -77,6 +77,11 @@ public sealed interface DomainError {
     public data class VerificationRequired(val objectId: OpaqueId) : DomainError
 
     public data class InvalidPolicy(val message: String) : DomainError
+
+    public data class PersistenceFailure(
+        val operation: String,
+        val safeMessage: String,
+    ) : DomainError
 }
 
 public sealed interface TransitionResult<out T> {
