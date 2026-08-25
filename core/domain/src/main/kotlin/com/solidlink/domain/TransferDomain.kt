@@ -82,6 +82,11 @@ public sealed interface DomainError {
         val operation: String,
         val safeMessage: String,
     ) : DomainError
+
+    public data class FileAccessFailure(
+        val operation: String,
+        val safeMessage: String,
+    ) : DomainError
 }
 
 public sealed interface TransitionResult<out T> {
