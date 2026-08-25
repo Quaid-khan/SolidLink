@@ -9,69 +9,92 @@ struct HomeView: View {
         NavigationStack {
             List {
                 Section {
-                    Text("Private transfers. No cloud relay.")
+                    Label("Private transfers. No cloud relay.", systemImage: "lock.shield.fill")
                         .font(.title2.weight(.semibold))
-                    Text("Choose files, confirm a nearby peer, and transfer over an authenticated local connection. SolidLink does not inspect file contents or upload them to a server.")
+                    Text("Move files over the same local Wi-Fi network. SolidLink does not upload them or use cellular fallback.")
                         .foregroundStyle(.secondary)
                 }
 
                 Section("1. Select files") {
-                    Button("Choose files") {
+                    Button {
                         isImporterPresented = true
+                    } label: {
+                        Label("Choose files", systemImage: "doc.badge.plus")
                     }
                     if model.selectedFiles.isEmpty {
-                        Text("No files selected. Access is limited to the files you choose.")
+                        Text("Files remain in your control until you choose them.")
                             .foregroundStyle(.secondary)
                     } else {
-                        Text("\(model.selectedFiles.count) file(s) selected and ready for peer confirmation.")
-                        Button("Clear", role: .destructive) {
+                        Text("\(model.selectedFiles.count) file(s) ready to send.")
+                        ForEach(model.selectedFiles) { file in
+                            Label(file.url.lastPathComponent, systemImage: "doc")
+                                .lineLimit(1)
+                        }
+                        Button("Clear selection", role: .destructive) {
                             model.clearFiles()
                         }
                     }
                 }
 
-                Section("2. Nearby peer") {
-                    Text("Discovery and peer confirmation will appear here when the local transport is connected. No peer or transfer is fabricated in this state.")
-                        .foregroundStyle(.secondary)
-                    Label("Waiting for local-network transport", systemImage: "dot.radiowaves.left.and.right")
-                        .foregroundStyle(.secondary)
+                Section("2. Nearby peers") {
+                    HStack {
+                        Label(model.discoveryStatus, systemImage: "dot.radiowaves.left.and.right")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Refresh") {
+                            model.stopLocalDiscovery()
+                            model.startLocalDiscovery()
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                    if model.discoveredPeers.isEmpty {
+                        Text("Keep both devices on the same Wi-Fi network. Discovery is local-only and uses Bonjour.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(model.discoveredPeers) { peer in
+                            HStack {
+                                Label(peer.displayName, systemImage: "iphone.gen3")
+                                Spacer()
+                                Button("Connect") {
+                                    model.connect(to: peer)
+                                }
+                                .buttonStyle(.borderedProminent)
+                            }
+                        }
+                    }
+                    if model.transferMessage != "No transfer started" {
+                        Text(model.transferMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Section("Privacy controls") {
                     Toggle("Require peer approval", isOn: $model.peerApprovalRequired)
-                    Toggle("Allow advanced SAS confirmation", isOn: $model.advancedSasEnabled)
+                    Toggle("Allow Advanced Security SAS", isOn: $model.advancedSasEnabled)
                     Toggle("Local-only routing", isOn: .constant(true))
                         .disabled(true)
-                    Text("This safety invariant cannot be disabled: public addresses, cloud fallback, and cellular fallback are rejected.")
+                    Text("Public addresses, Internet routes, cloud relays, and cellular fallback are rejected.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Workspaces") {
-                    NavigationLink("Send") { SendView() }
-                    NavigationLink("Receive") { ReceiveView() }
-                    NavigationLink("Peer Approval") { PeerApprovalView() }
-                    NavigationLink("Active Transfer") { ActiveTransferView() }
-                    NavigationLink("History") { HistoryView() }
-                    NavigationLink("Staged Files") { StagedFilesView() }
-                    NavigationLink("Export") { ExportView() }
-                    NavigationLink("Settings") { SettingsView() }
-                }
-
-                Section("Transfer history") {
-                    Text("Completed transfers will appear here after durable history is connected. No placeholder records are shown.")
+                Section("Transfer readiness") {
+                    Label("QR/PIN-first pairing", systemImage: "qrcode")
+                    Label("Protobuf protocol", systemImage: "arrow.left.arrow.right")
+                    Label("Chunked and resumable transfer", systemImage: "arrow.triangle.2.circlepath")
+                    Text("The current repository slice verifies local discovery and socket connection. Full authenticated file transfer still requires the native transfer engine to be connected to this transport.")
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
-                    Text("Nothing transferred yet")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.secondary)
-                }
-
-                Section {
-                    Button(model.selectedFiles.isEmpty ? "Select files to continue" : "Waiting for peer confirmation") {}
-                        .disabled(true)
                 }
             }
             .navigationTitle("SolidLink")
+        }
+        .task {
+            model.startLocalDiscovery()
+        }
+        .onDisappear {
+            model.stopLocalDiscovery()
         }
         .fileImporter(
             isPresented: $isImporterPresented,

@@ -70,4 +70,19 @@ class TransportApiTest {
         val endpoint = TransportEndpoint("203.0.113.10", 1234, null, TransportKind.LOOPBACK, false)
         assertFalse(LocalEndpointPolicy.accepts(endpoint))
     }
+
+    @Test
+    fun localPolicyAcceptsPrivateLanAddressesOnlyForDiscoveredLanPeers() {
+        assertTrue(LocalEndpointPolicy.accepts(TransportEndpoint("192.168.1.20", 4321, "nsd-local", TransportKind.LAN_NSD, true)))
+        assertTrue(LocalEndpointPolicy.accepts(TransportEndpoint("10.0.0.4", 4321, "nsd-local", TransportKind.LAN_NSD, true)))
+        assertTrue(LocalEndpointPolicy.accepts(TransportEndpoint("fe80::1234", 4321, "nsd-local", TransportKind.LAN_NSD, true)))
+        assertFalse(LocalEndpointPolicy.accepts(TransportEndpoint("127.0.0.1", 4321, "nsd-local", TransportKind.LAN_NSD, true)))
+        assertFalse(LocalEndpointPolicy.accepts(TransportEndpoint("8.8.8.8", 4321, "nsd-local", TransportKind.LAN_NSD, true)))
+    }
+
+    @Test
+    fun loopbackPolicyRemainsAvailableForDeterministicTests() {
+        assertTrue(LocalEndpointPolicy.accepts(TransportEndpoint("127.0.0.1", 1234, "loopback", TransportKind.LOOPBACK, true)))
+        assertFalse(LocalEndpointPolicy.accepts(TransportEndpoint("192.168.1.20", 1234, "loopback", TransportKind.LOOPBACK, true)))
+    }
 }

@@ -48,6 +48,8 @@ android {
 dependencies {
     implementation(project(":core:domain"))
     implementation(project(":core:common"))
+    implementation(project(":core:protocol"))
+    implementation(project(":transport:lan-nsd"))
     implementation(project(":platform:transfer-service"))
     implementation(project(":data:files"))
     implementation(project(":transport:wifi-direct"))

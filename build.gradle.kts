@@ -9,6 +9,11 @@ plugins {
 }
 
 subprojects {
+    pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
+        tasks.withType<JavaCompile>().configureEach {
+            options.release.set(17)
+        }
+    }
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
         compilerOptions {
             allWarningsAsErrors.set(true)

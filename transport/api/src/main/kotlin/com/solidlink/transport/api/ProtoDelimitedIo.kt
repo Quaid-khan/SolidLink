@@ -1,47 +1,75 @@
 package com.solidlink.transport.api
 
+import com.google.protobuf.CodedInputStream
+import com.google.protobuf.CodedOutputStream
 import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 
+/**
+ * Delimits already-serialized Protobuf messages using the official runtime.
+ * The generated message owns its wire serialization; this class only provides
+ * the bounded length-delimited stream envelope required for sequential messages.
+ */
 public object ProtoDelimitedIo {
-    public fun write(frame: ByteArray, output: OutputStream, maxFrameBytes: Int) {
-        if (frame.size > maxFrameBytes) throw IOException("frame exceeds negotiated limit")
-        var value = frame.size
-        while (value and 0x7f != 0) {
-            output.write((value and 0x7f) or 0x80)
-            value = value ushr 7
-        }
-        output.write(value)
-        output.write(frame)
-        output.flush()
+    public fun writer(output: OutputStream, maxMessageBytes: Int): Writer = Writer(output, maxMessageBytes)
+
+    public fun reader(input: InputStream, maxMessageBytes: Int): Reader = Reader(input, maxMessageBytes)
+
+    public fun write(messageBytes: ByteArray, output: OutputStream, maxMessageBytes: Int) {
+        writer(output, maxMessageBytes).write(messageBytes)
     }
 
-    public fun read(input: InputStream, maxFrameBytes: Int): ByteArray? {
-        val first = input.read()
-        if (first < 0) return null
-        var value = first and 0x7f
-        var shift = 7
-        while (firstByteContinues(first, shift)) {
-            if (shift > 28) throw IOException("frame size varint is too long")
-            val next = input.read()
-            if (next < 0) throw EOFException("frame size prefix is truncated")
-            value = value or ((next and 0x7f) shl shift)
-            if (next and 0x80 == 0) break
-            shift += 7
-        }
-        if (value < 0 || value > maxFrameBytes) throw IOException("frame exceeds negotiated limit")
-        val frame = ByteArray(value)
-        var offset = 0
-        while (offset < frame.size) {
-            val read = input.read(frame, offset, frame.size - offset)
-            if (read < 0) throw EOFException("frame payload is truncated")
-            if (read == 0) continue
-            offset += read
-        }
-        return frame
+    public fun read(input: InputStream, maxMessageBytes: Int): ByteArray? {
+        return reader(input, maxMessageBytes).read()
     }
 
-    private fun firstByteContinues(first: Int, shift: Int): Boolean = first and 0x80 != 0 && shift <= 28
+    public class Writer internal constructor(
+        output: OutputStream,
+        private val maxMessageBytes: Int,
+    ) {
+        private val codedOutput = CodedOutputStream.newInstance(output)
+
+        init {
+            require(maxMessageBytes > 0) { "maxMessageBytes must be positive" }
+        }
+
+        public fun write(messageBytes: ByteArray) {
+            if (messageBytes.size > maxMessageBytes) {
+                throw IOException("message exceeds negotiated limit")
+            }
+            codedOutput.writeUInt32NoTag(messageBytes.size)
+            codedOutput.writeRawBytes(messageBytes)
+            codedOutput.flush()
+        }
+    }
+
+    public class Reader internal constructor(
+        input: InputStream,
+        private val maxMessageBytes: Int,
+    ) {
+        private val codedInput = CodedInputStream.newInstance(input)
+
+        init {
+            require(maxMessageBytes > 0) { "maxMessageBytes must be positive" }
+        }
+
+        public fun read(): ByteArray? {
+            if (codedInput.isAtEnd) return null
+            val size = try {
+                codedInput.readRawVarint32()
+            } catch (error: EOFException) {
+                throw EOFException("message size prefix is truncated: ${error.message}")
+            }
+            if (size < 0 || size > maxMessageBytes) {
+                throw IOException("message exceeds negotiated limit")
+            }
+            return try {
+                codedInput.readRawBytes(size)
+            } catch (error: IOException) {
+                throw EOFException("message payload is truncated: ${error.message}")
+            }
+        }
+    }
 }

@@ -15,7 +15,7 @@ class ProtoDelimitedIoTest {
         val frame = ByteArray(300) { it.toByte() }
         val output = ByteArrayOutputStream()
 
-        ProtoDelimitedIo.write(frame, output, maxFrameBytes = 1_024)
+        ProtoDelimitedIo.write(frame, output, maxMessageBytes = 1_024)
 
         assertArrayEquals(frame, ProtoDelimitedIo.read(ByteArrayInputStream(output.toByteArray()), 1_024))
         assertNull(ProtoDelimitedIo.read(ByteArrayInputStream(byteArrayOf()), 1_024))
@@ -24,8 +24,21 @@ class ProtoDelimitedIoTest {
     @Test
     fun writerRejectsOversizedFrame() {
         assertThrows(IOException::class.java) {
-            ProtoDelimitedIo.write(ByteArray(9), ByteArrayOutputStream(), maxFrameBytes = 8)
+            ProtoDelimitedIo.write(ByteArray(9), ByteArrayOutputStream(), maxMessageBytes = 8)
         }
+    }
+
+    @Test
+    fun statefulReaderPreservesSequentialMessages() {
+        val output = ByteArrayOutputStream()
+        val writer = ProtoDelimitedIo.writer(output, 1_024)
+        writer.write(byteArrayOf(1, 2, 3))
+        writer.write(byteArrayOf(4, 5, 6, 7))
+
+        val reader = ProtoDelimitedIo.reader(ByteArrayInputStream(output.toByteArray()), 1_024)
+        assertArrayEquals(byteArrayOf(1, 2, 3), reader.read())
+        assertArrayEquals(byteArrayOf(4, 5, 6, 7), reader.read())
+        assertNull(reader.read())
     }
 
     @Test

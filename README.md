@@ -1,8 +1,8 @@
 # SolidLink
 
-SolidLink is an Android-first, privacy-first, reliability-first peer-to-peer file transfer product. The primary launch target is a native Kotlin Android application built with Jetpack Compose. A native SwiftUI iPhone companion will implement the same transport-neutral transfer contract and wire protocol in later phases.
+SolidLink is an Android-first, privacy-first, reliability-first peer-to-peer file transfer product. The primary launch target is a native Kotlin Android application built with Jetpack Compose. A native SwiftUI iPhone companion implements the same transport-neutral transfer contract and wire protocol in the `ios/SolidLinkiOS` package.
 
-This repository is intentionally being built in ordered, verified increments. The current increment establishes only the native Android build graph and a minimal Compose shell. It does **not** claim that discovery, authentication, transfer, persistence, or iOS interoperability are implemented.
+This repository is intentionally being built in ordered, verified increments. The current increment includes a real Android LAN/NSD advertiser and browser, a bidirectional Protobuf HELLO smoke handshake, and an iOS Bonjour/Network discovery-and-socket foundation. Full authenticated file transfer, durable transfer orchestration, and physical Android↔iPhone interoperability validation remain separate work and are not claimed as complete.
 
 ## Architecture rules
 

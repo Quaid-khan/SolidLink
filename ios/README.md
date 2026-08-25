@@ -6,7 +6,7 @@ This directory contains the native SwiftUI and Swift Package foundation for the 
 
 The foundation provides an iOS 17 SwiftUI entry point, a shared observable app model, document-picker selection, balanced security-scoped URL access, privacy metadata for local Bonjour discovery, and dedicated screens for Send, Receive, Peer Approval, Active Transfer, History, Staged Files, Export, and Settings. Empty or unavailable states are explicit; the UI does not create fake peers, fake progress, or sample transfer history.
 
-The iOS transport is intentionally not implemented in this phase. Phase 16 will add Network.framework Bonjour browsing/listening and the Android-compatible local-IP transport. No received file is exportable until the later transfer and verification layers mark it complete.
+The iOS foundation now includes a Network.framework Bonjour advertiser/browser and local TCP socket connection path. It can advertise, discover, and open a local connection to an Android peer when built on a real iPhone. The native authenticated Protobuf handshake, transfer engine wiring, and Android↔iPhone file-transfer verification remain separate work; no received file is exportable until the later transfer and verification layers mark it complete.
 
 ## Toolchain and build
 

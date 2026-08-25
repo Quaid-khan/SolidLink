@@ -1,10 +1,7 @@
 package com.solidlink.app
 
-import android.Manifest
 import android.app.Activity
-import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -18,56 +15,51 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.solidlink.files.FilePickerIntents
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    var selectedUris by rememberSaveable { mutableStateOf(emptyList<String>()) }
-    var peerApprovalRequired by rememberSaveable { mutableStateOf(true) }
-    var advancedSasEnabled by rememberSaveable { mutableStateOf(true) }
-    var notificationPermissionRequested by rememberSaveable { mutableStateOf(false) }
-
+public fun HomeScreen(
+    modifier: Modifier = Modifier,
+    solidLinkViewModel: SolidLinkViewModel = viewModel(),
+) {
+    val state by solidLinkViewModel.state.collectAsStateWithLifecycle()
     val documentPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            selectedUris = result.data?.selectedUris().orEmpty().map(Uri::toString)
+            solidLinkViewModel.setSelectedUris(result.data?.selectedUris().orEmpty())
         }
     }
-    val notificationPermission = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) {
-        notificationPermissionRequested = true
+
+    LaunchedEffect(Unit) {
+        solidLinkViewModel.startLocalDiscovery()
     }
 
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(
-                title = { Text("SolidLink") },
-            )
+            TopAppBar(title = { Text("SolidLink") })
         },
     ) { innerPadding ->
         LazyColumn(
@@ -84,11 +76,49 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold,
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "Choose files, confirm a nearby peer, and transfer over an authenticated local connection. SolidLink does not inspect file contents or upload them to a server.",
+                    text = "Move files over the same local Wi-Fi network. SolidLink does not upload your files or use cellular fallback.",
                     style = MaterialTheme.typography.bodyLarge,
                 )
+            }
+
+            item {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = if (state.isRunning) "Local discovery is active" else "Local discovery is stopped",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(state.status, style = MaterialTheme.typography.bodyMedium)
+                        state.error?.let { error ->
+                            Text(
+                                text = error,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            if (state.isRunning) {
+                                OutlinedButton(onClick = solidLinkViewModel::stopLocalDiscovery) {
+                                    Text("Stop")
+                                }
+                            } else {
+                                Button(onClick = solidLinkViewModel::startLocalDiscovery) {
+                                    Text("Find nearby peers")
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             item {
@@ -99,10 +129,10 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                     ) {
                         Text("1. Select files", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            text = if (selectedUris.isEmpty()) {
-                                "No files selected. Access is limited to the files you choose."
+                            text = if (state.selectedUris.isEmpty()) {
+                                "Files stay in your control. Choose them only when you are ready to send."
                             } else {
-                                "${selectedUris.size} file${if (selectedUris.size == 1) "" else "s"} selected and ready for peer confirmation."
+                                "${state.selectedUris.size} file${if (state.selectedUris.size == 1) "" else "s"} ready to send."
                             },
                             style = MaterialTheme.typography.bodyMedium,
                         )
@@ -110,8 +140,8 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                             Button(onClick = { documentPicker.launch(FilePickerIntents.openDocuments()) }) {
                                 Text("Choose files")
                             }
-                            if (selectedUris.isNotEmpty()) {
-                                OutlinedButton(onClick = { selectedUris = emptyList() }) {
+                            if (state.selectedUris.isNotEmpty()) {
+                                OutlinedButton(onClick = { solidLinkViewModel.setSelectedUris(emptyList()) }) {
                                     Text("Clear")
                                 }
                             }
@@ -126,72 +156,22 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Text("2. Nearby peer", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "Discovery and peer confirmation will appear here when the LAN transport is connected. No peer or transfer is fabricated in this state.",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Button(onClick = {}, enabled = false) {
-                            Text("Find nearby peers")
+                        Text("2. Nearby peers", style = MaterialTheme.typography.titleMedium)
+                        if (state.peers.isEmpty()) {
+                            Text(
+                                "Open SolidLink on the other device and keep both devices on the same Wi-Fi network. Discovery is local-only.",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
                         }
-                        Text(
-                            "Transport integration is the next functional slice.",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
                     }
-                }
-            }
-
-            item {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Text("Privacy controls", style = MaterialTheme.typography.titleMedium)
-                        PrivacySwitchRow(
-                            label = "Require peer approval",
-                            checked = peerApprovalRequired,
-                            onCheckedChange = { peerApprovalRequired = it },
-                        )
-                        PrivacySwitchRow(
-                            label = "Allow advanced SAS confirmation",
-                            checked = advancedSasEnabled,
-                            onCheckedChange = { advancedSasEnabled = it },
-                        )
+                    if (state.peers.isNotEmpty()) {
                         HorizontalDivider()
-                        PrivacySwitchRow(
-                            label = "Local-only routing",
-                            checked = true,
-                            onCheckedChange = {},
-                            enabled = false,
-                        )
-                        Text(
-                            "This safety invariant cannot be disabled: public addresses, cloud fallback, and cellular fallback are rejected.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationPermissionRequested) {
-                item {
-                    Card(modifier = Modifier.fillMaxWidth()) {
                         Column(
                             modifier = Modifier.padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            Text("Transfer notifications", style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                "Allow visible progress and cancellation controls for transfers that continue while the app is not on screen.",
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                            OutlinedButton(onClick = {
-                                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                            }) {
-                                Text("Enable notifications")
+                            state.peers.forEach { peerRow ->
+                                PeerRowItem(peerRow, onConnect = { solidLinkViewModel.connect(peerRow) })
                             }
                         }
                     }
@@ -202,30 +182,29 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(
                         modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text("Transfer history", style = MaterialTheme.typography.titleMedium)
+                        Text("Local-only protection", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "Completed transfers will appear here after durable history is connected. No placeholder records are shown.",
+                            "SolidLink accepts only peers discovered on the local link. Public addresses, Internet routes, cloud relays, and cellular fallback are rejected before file bytes are sent.",
                             style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Text(
-                            "Nothing transferred yet",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
             }
 
             item {
-                Button(
-                    onClick = {},
-                    enabled = false,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(if (selectedUris.isEmpty()) "Select files to continue" else "Waiting for peer confirmation")
-                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Peer-to-peer smoke path",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "A successful connection performs a Protobuf HELLO exchange. Full authenticated transfer and iPhone transport remain separate native implementation work and are not represented as completed here.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Spacer(Modifier.height(20.dp))
             }
         }
@@ -233,26 +212,32 @@ fun HomeScreen(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun PrivacySwitchRow(
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    enabled: Boolean = true,
-) {
+private fun PeerRowItem(peerRow: PeerRow, onConnect: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(peerRow.peer.displayName, style = MaterialTheme.typography.titleSmall)
+            Text(
+                text = "${peerRow.peer.endpoint.hostAddress}:${peerRow.peer.endpoint.port} · LAN",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (peerRow.isConnecting) {
+            CircularProgressIndicator(modifier = Modifier.padding(8.dp))
+        } else {
+            Button(onClick = onConnect) { Text("Connect") }
+        }
     }
 }
 
-private fun Intent.selectedUris(): List<Uri> {
+private fun android.content.Intent.selectedUris(): List<Uri> {
     val clip = clipData
     return when {
-        clip != null -> (0 until clip.itemCount).map { clip.getItemAt(it).uri }
+        clip != null -> (0 until clip.itemCount).mapNotNull { clip.getItemAt(it).uri }
         data != null -> listOfNotNull(data)
         else -> emptyList()
     }
@@ -261,7 +246,5 @@ private fun Intent.selectedUris(): List<Uri> {
 @Preview(showBackground = true)
 @Composable
 private fun HomeScreenPreview() {
-    MaterialTheme {
-        HomeScreen()
-    }
+    MaterialTheme { HomeScreen(solidLinkViewModel = viewModel()) }
 }

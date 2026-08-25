@@ -229,20 +229,22 @@ private class TcpTransportConnection(
     private val socket: Socket,
     override val endpoint: TransportEndpoint,
     override val capabilities: TransportCapabilities,
-    private val maxFrameBytes: Int,
+    private val maxMessageBytes: Int,
 ) : StreamTransportConnection {
     override val input = socket.getInputStream()
     override val output = socket.getOutputStream()
+    private val delimitedReader = ProtoDelimitedIo.reader(input, maxMessageBytes)
+    private val delimitedWriter = ProtoDelimitedIo.writer(output, maxMessageBytes)
     private val closed = AtomicBoolean(false)
 
     override fun send(frame: ByteArray): TransportResult<Unit> = synchronized(output) {
         if (!isOpen()) return failure(TransportError.Code.CLOSED, "Connection is closed", false)
         try {
-            ProtoDelimitedIo.write(frame, output, maxFrameBytes)
+            delimitedWriter.write(frame)
             TransportResult.Success(Unit)
         } catch (_: IOException) {
             close()
-            failure(TransportError.Code.IO_FAILURE, "LAN frame write failed", true)
+            failure(TransportError.Code.IO_FAILURE, "LAN message write failed", true)
         }
     }
 
@@ -251,19 +253,19 @@ private class TcpTransportConnection(
         if (!isOpen()) return failure(TransportError.Code.CLOSED, "Connection is closed", false)
         return try {
             socket.soTimeout = timeoutMillis.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-            val frame = ProtoDelimitedIo.read(input, maxFrameBytes)
-            if (frame == null) {
+            val message = delimitedReader.read()
+            if (message == null) {
                 close()
                 failure(TransportError.Code.CLOSED, "Peer closed the connection", false)
-            } else TransportResult.Success(frame)
+            } else TransportResult.Success(message)
         } catch (_: SocketTimeoutException) {
-            failure(TransportError.Code.TIMEOUT, "No frame arrived before the deadline", true)
+            failure(TransportError.Code.TIMEOUT, "No message arrived before the deadline", true)
         } catch (_: EOFException) {
             close()
-            failure(TransportError.Code.IO_FAILURE, "Peer sent a truncated frame", true)
+            failure(TransportError.Code.IO_FAILURE, "Peer sent a truncated message", true)
         } catch (_: IOException) {
             close()
-            failure(TransportError.Code.IO_FAILURE, "LAN frame read failed", true)
+            failure(TransportError.Code.IO_FAILURE, "LAN message read failed", true)
         }
     }
 
