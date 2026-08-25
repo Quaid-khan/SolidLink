@@ -1,0 +1,19 @@
+# Gradle
+.gradle/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+/local.properties
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated protocol output
+**/generated/
+
+# Local reports
+reports/
