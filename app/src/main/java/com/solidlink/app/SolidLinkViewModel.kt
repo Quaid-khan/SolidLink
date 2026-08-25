@@ -170,18 +170,18 @@ public class SolidLinkViewModel(application: Application) : AndroidViewModel(app
                                     )
                                     val snapshot = source.snapshot
                                     
-                                    val manifest = sender.manifestEnvelope(snapshot, 2, localPeerId.toByteArray())
+                                    val manifest = sender.manifestEnvelope(snapshot, 2L, localPeerId.toByteArray())
                                     connection.send(ProtobufFrameCodec.encode(manifest))
                                     
-                                    val chunkEnvelopes = sender.chunkEnvelopes(source, localPeerId.toByteArray(), 3)
+                                    val chunkEnvelopes = sender.chunkEnvelopes(source, localPeerId.toByteArray(), 3L)
                                     chunkEnvelopes.forEach { envelope ->
                                         connection.send(ProtobufFrameCodec.encode(envelope))
                                     }
                                     
                                     val finalEnv = sender.finalEnvelope(
                                         snapshot = snapshot,
-                                        byteCount = snapshot.sizeBytes ?: 0,
-                                        chunkCount = snapshot.totalChunks ?: 0,
+                                        byteCount = snapshot.sizeBytes ?: 0L,
+                                        chunkCount = snapshot.totalChunks ?: 0L,
                                         sequence = 3L + chunkEnvelopes.size,
                                         sessionId = localPeerId.toByteArray()
                                     )
