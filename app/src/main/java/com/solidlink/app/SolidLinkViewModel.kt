@@ -34,6 +34,7 @@ public data class SolidLinkUiState(
     val status: String = "Local discovery is stopped",
     val error: String? = null,
     val connectedPeer: String? = null,
+    val notificationsEnabled: Boolean = false,
 )
 
 public class SolidLinkViewModel(application: Application) : AndroidViewModel(application) {
@@ -50,6 +51,10 @@ public class SolidLinkViewModel(application: Application) : AndroidViewModel(app
 
     public fun setSelectedUris(uris: List<Uri>) {
         _state.value = _state.value.copy(selectedUris = uris.distinct())
+    }
+
+    public fun setNotificationsEnabled(enabled: Boolean) {
+        _state.value = _state.value.copy(notificationsEnabled = enabled)
     }
 
     public fun startLocalDiscovery() {
