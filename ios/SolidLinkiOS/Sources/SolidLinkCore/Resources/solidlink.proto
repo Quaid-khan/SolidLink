@@ -1,0 +1,179 @@
+syntax = "proto3";
+
+package solidlink.protocol.v1;
+
+option java_package = "com.solidlink.protocol.v1";
+option java_multiple_files = true;
+option java_outer_classname = "SolidLinkProtocol";
+
+message Envelope {
+  uint64 sequence = 1;
+  bytes session_id = 2;
+  oneof body {
+    Hello hello = 10;
+    Auth auth = 11;
+    SasInfo sas_info = 12;
+    SessionAccept session_accept = 13;
+    BatchManifest batch_manifest = 14;
+    ResumeQuery resume_query = 15;
+    ResumePlan resume_plan = 16;
+    Chunk chunk = 17;
+    ChunkAck chunk_ack = 18;
+    ChunkNack chunk_nack = 19;
+    WindowUpdate window_update = 20;
+    ObjectFinal object_final = 21;
+    ObjectCommitAck object_commit_ack = 22;
+    Cancel cancel = 23;
+    Pause pause = 24;
+    Keepalive keepalive = 25;
+    Error error = 26;
+    Goodbye goodbye = 27;
+  }
+}
+
+message Hello {
+  uint32 protocol_major = 1;
+  uint32 protocol_minor = 2;
+  string implementation_id = 3;
+  bytes ephemeral_public_key = 4;
+  bytes nonce = 5;
+  repeated string transports = 6;
+  repeated string security_suites = 7;
+  uint32 max_envelope_bytes = 8;
+  bool local_only_required = 9;
+  reserved 10;
+  reserved "legacy_device_id";
+}
+
+message Auth {
+  bytes transcript_authenticator = 1;
+  bytes identity_public_key = 2;
+  reserved 3 to 9;
+}
+
+message SasInfo {
+  string sas = 1;
+  bytes transcript_hash = 2;
+}
+
+message SessionAccept {
+  bool accepted = 1;
+  string role = 2;
+  uint64 idle_timeout_ms = 3;
+  string selected_transport = 4;
+  uint32 max_envelope_bytes = 5;
+  uint32 max_in_flight_chunks = 6;
+  uint64 max_in_flight_bytes = 7;
+}
+
+message BatchManifest {
+  bytes batch_id = 1;
+  repeated FileManifest files = 2;
+  string distribution_mode = 3;
+  reserved 4 to 9;
+}
+
+message FileManifest {
+  bytes object_id = 1;
+  string display_name = 2;
+  string mime_type = 3;
+  optional uint64 size_bytes = 4;
+  optional int64 last_modified_epoch_ms = 5;
+  uint32 chunk_size = 6;
+  optional uint64 total_chunks = 7;
+  string integrity_mode = 8;
+  bytes final_digest = 9;
+  reserved 10 to 19;
+}
+
+message ResumeQuery {
+  bytes object_id = 1;
+  repeated ChunkRange verified_ranges = 2;
+  uint64 staging_length = 3;
+  uint64 last_durable_sequence = 4;
+  bytes source_metadata_digest = 5;
+}
+
+message ResumePlan {
+  bytes object_id = 1;
+  repeated ChunkRange send_ranges = 2;
+  bool clean_restart = 3;
+  string reason = 4;
+}
+
+message ChunkRange {
+  uint64 first_index = 1;
+  uint64 last_index_inclusive = 2;
+}
+
+message Chunk {
+  bytes object_id = 1;
+  uint64 chunk_index = 2;
+  uint32 plaintext_length = 3;
+  bytes digest = 4;
+  bytes payload = 5;
+  reserved 6 to 9;
+}
+
+message ChunkAck {
+  bytes object_id = 1;
+  oneof acknowledgment {
+    uint64 chunk_index = 2;
+    ChunkIndexList chunk_indices = 3;
+  }
+  uint64 durable_checkpoint_sequence = 4;
+  uint32 receive_window_chunks = 5;
+  uint64 receive_window_bytes = 6;
+}
+
+message ChunkIndexList {
+  repeated uint64 indices = 1;
+}
+
+message ChunkNack {
+  bytes object_id = 1;
+  uint64 chunk_index = 2;
+  string error_code = 3;
+  bool retryable = 4;
+}
+
+message WindowUpdate {
+  uint32 max_in_flight_chunks = 1;
+  uint64 max_in_flight_bytes = 2;
+}
+
+message ObjectFinal {
+  bytes object_id = 1;
+  uint64 byte_count = 2;
+  uint64 chunk_count = 3;
+  bytes final_digest = 4;
+}
+
+message ObjectCommitAck {
+  bytes object_id = 1;
+  bool verified = 2;
+  string error_code = 3;
+  string safe_message = 4;
+}
+
+message Cancel {
+  string reason = 1;
+}
+
+message Pause {
+  string reason = 1;
+}
+
+message Keepalive {
+  uint64 monotonic_ms = 1;
+}
+
+message Error {
+  string code = 1;
+  string safe_message = 2;
+  bool retryable = 3;
+}
+
+message Goodbye {
+  string reason = 1;
+}
