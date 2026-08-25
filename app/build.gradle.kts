@@ -50,6 +50,8 @@ dependencies {
     implementation(project(":core:common"))
     implementation(project(":platform:transfer-service"))
     implementation(project(":data:files"))
+    implementation(project(":transport:wifi-direct"))
+    implementation(project(":transport:wifi-aware"))
 
     val composeBom = platform("androidx.compose:compose-bom:2026.08.00")
     implementation(composeBom)
