@@ -20,22 +20,32 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.PeopleOutline
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -44,6 +54,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,11 +66,27 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import com.solidlink.files.FilePickerIntents
 
 private val SolidLinkNavy = androidx.compose.ui.graphics.Color(0xFF071B3A)
 private val SolidLinkTeal = androidx.compose.ui.graphics.Color(0xFF208C9A)
 private val SolidLinkIconBackground = androidx.compose.ui.graphics.Color(0xFFE9F4F5)
+
+private data class NavigationDestination(
+    val label: String,
+    val icon: ImageVector,
+)
+
+private val NavigationDestinations = listOf(
+    NavigationDestination("Home", Icons.Outlined.Home),
+    NavigationDestination("Send", Icons.Outlined.ArrowUpward),
+    NavigationDestination("Receive", Icons.Outlined.ArrowDownward),
+    NavigationDestination("Peer Approval", Icons.Outlined.PeopleOutline),
+    NavigationDestination("Active Transfer", Icons.Outlined.Sync),
+    NavigationDestination("History", Icons.Outlined.History),
+    NavigationDestination("Settings", Icons.Outlined.Settings),
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +95,9 @@ public fun HomeScreen(
     solidLinkViewModel: SolidLinkViewModel = viewModel(),
 ) {
     val state by solidLinkViewModel.state.collectAsStateWithLifecycle()
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val drawerScope = rememberCoroutineScope()
+    val (selectedDestination, setSelectedDestination) = remember { mutableStateOf("Home") }
     val documentPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) { result ->
@@ -81,25 +113,68 @@ public fun HomeScreen(
         solidLinkViewModel.startLocalDiscovery()
     }
 
-    Scaffold(
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                Column(modifier = Modifier.padding(vertical = 18.dp)) {
+                    Text(
+                        text = "SolidLink",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = SolidLinkNavy,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                    )
+                    Text(
+                        text = "Private local transfers",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                    )
+                    Spacer(Modifier.height(18.dp))
+                    NavigationDestinations.forEach { destination ->
+                        NavigationDrawerItem(
+                            label = { Text(destination.label) },
+                            selected = selectedDestination == destination.label,
+                            onClick = {
+                                setSelectedDestination(destination.label)
+                                drawerScope.launch { drawerState.close() }
+                            },
+                            icon = { Icon(destination.icon, contentDescription = null) },
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
+                        )
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 14.dp, horizontal = 24.dp))
+                    Text(
+                        text = "Local-only routing is always on",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                    )
+                }
+            }
+        },
+    ) {
+        Scaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
                 title = { Text("SolidLink", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
-                    IconButton(onClick = { /* Navigation drawer follows in the next increment. */ }) {
+                    IconButton(onClick = { drawerScope.launch { drawerState.open() } }) {
                         Icon(Icons.Outlined.Menu, contentDescription = "Open navigation")
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* Settings screen follows the same state model. */ }) {
+                    IconButton(onClick = { setSelectedDestination("Settings") }) {
                         Icon(Icons.Outlined.MoreVert, contentDescription = "More options")
                     }
                 },
             )
         },
     ) { innerPadding ->
-        LazyColumn(
+        if (selectedDestination == "Home") {
+            LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
@@ -261,6 +336,100 @@ public fun HomeScreen(
                     onClick = {},
                 ) {
                     Text(if (state.selectedUris.isEmpty()) "Select files to continue" else "Waiting for peer confirmation")
+                }
+            }
+            }
+        } else {
+            DestinationScreen(
+                destination = selectedDestination,
+                state = state,
+                onChooseFiles = { documentPicker.launch(FilePickerIntents.openDocuments()) },
+                onFindPeers = solidLinkViewModel::startLocalDiscovery,
+                onConnect = solidLinkViewModel::connect,
+                onEnableNotifications = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        solidLinkViewModel.setNotificationsEnabled(true)
+                    }
+                },
+            )
+        }
+    }
+}
+}
+
+@Composable
+private fun DestinationScreen(
+    destination: String,
+    state: SolidLinkUiState,
+    onChooseFiles: () -> Unit,
+    onFindPeers: () -> Unit,
+    onConnect: (PeerRow) -> Unit,
+    onEnableNotifications: () -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item {
+            Text(destination, style = MaterialTheme.typography.headlineSmall, color = SolidLinkNavy)
+            Text(
+                "SolidLink keeps this workflow on the local network and never falls back to the Internet.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        when (destination) {
+            "Send" -> item {
+                WorkflowCard("1", "Select files", Icons.Outlined.FolderOpen, "Files") {
+                    Text(
+                        if (state.selectedUris.isEmpty()) "No files selected" else "${state.selectedUris.size} file(s) selected",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Button(onClick = onChooseFiles, modifier = Modifier.fillMaxWidth()) { Text("Choose files") }
+                }
+            }
+            "Receive" -> item {
+                SettingsCard("Incoming transfer", Icons.Outlined.ArrowDownward) {
+                    Text("A nearby peer must connect and receive approval before files are written.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedButton(onClick = onFindPeers, modifier = Modifier.fillMaxWidth()) { Text("Search for sender") }
+                }
+            }
+            "Peer Approval" -> item {
+                SettingsCard("Approve a nearby peer", Icons.Outlined.Security) {
+                    if (state.peers.isEmpty()) {
+                        Text("No peer is ready for approval.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        OutlinedButton(onClick = onFindPeers, modifier = Modifier.fillMaxWidth()) { Text("Find peers") }
+                    } else {
+                        state.peers.forEach { peer -> PeerRowItem(peer, onConnect = { onConnect(peer) }) }
+                    }
+                }
+            }
+            "Active Transfer" -> item {
+                SettingsCard("Active transfer", Icons.Outlined.Sync) {
+                    Text(
+                        state.connectedPeer?.let { "Connected peer: $it" } ?: "No active transfer",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text("Progress appears only for a real authenticated, checkpointed session.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            "History" -> item {
+                SettingsCard("Transfer history", Icons.Outlined.History) {
+                    Text("Nothing transferred yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            "Settings" -> item {
+                SettingsCard("Settings", Icons.Outlined.Settings) {
+                    ToggleRow("Require peer approval", checked = true, onCheckedChange = {})
+                    ToggleRow("Advanced SAS confirmation", checked = true, onCheckedChange = {})
+                    ToggleRow("Local-only routing", checked = true, enabled = false, onCheckedChange = {})
+                    OutlinedButton(onClick = onEnableNotifications, modifier = Modifier.fillMaxWidth()) {
+                        Text(if (state.notificationsEnabled) "Notifications enabled" else "Enable notifications")
+                    }
                 }
             }
         }
