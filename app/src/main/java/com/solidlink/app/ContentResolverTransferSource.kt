@@ -52,7 +52,7 @@ class ContentResolverTransferSource(
             lastModifiedEpochMs = null, // We don't have this readily available without more complex SAF querying
             finalDigest = finalDigest,
             totalChunks = if (sizeBytes != null) {
-                (sizeBytes!! + 256 * 1024 - 1) / (256 * 1024)
+                (sizeBytes + 256 * 1024 - 1) / (256 * 1024)
             } else null
         )
     }

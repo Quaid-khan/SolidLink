@@ -4,7 +4,7 @@ import com.solidlink.db.SolidLinkRepository
 import com.solidlink.domain.Checkpoint
 import com.solidlink.domain.ChunkState
 import com.solidlink.domain.ChunkStatus
-import com.solidlink.domain.OpaqueId
+import com.solidlink.common.OpaqueId
 import com.solidlink.transfer.ResumeState
 import com.solidlink.transfer.VerifiedObjectSink
 import kotlinx.coroutines.runBlocking

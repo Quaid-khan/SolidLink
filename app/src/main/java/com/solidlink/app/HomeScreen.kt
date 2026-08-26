@@ -329,7 +329,7 @@ public fun HomeScreen(
                     } else {
                         history.take(5).forEach { batch ->
                             Text(
-                                "Batch ${batch.batchId.take(8)} - ${batch.objectCount} files",
+                                "Batch ${batch.batchId.value.take(8)} · ${batch.direction.name} · ${batch.status.name}",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = SolidLinkNavy
                             )

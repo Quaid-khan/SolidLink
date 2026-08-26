@@ -14,6 +14,7 @@ import com.solidlink.protocol.v1.Hello
 import com.solidlink.transfer.TransferEvent
 import com.solidlink.transfer.TransferReceiver
 import com.solidlink.transfer.TransferSender
+import com.solidlink.transport.api.DiscoveredPeer
 import com.solidlink.transport.api.TransportConnection
 import com.solidlink.transport.api.TransportResult
 import com.solidlink.transport.lannsd.LanNsdAdapter
